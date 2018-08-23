@@ -1,6 +1,6 @@
 //
-//  SketchToolType.swift
-//  Sketch
+//  DoodleKitView.swift
+//  DoodleKit
 //
 //  Created by daihase on 04/06/2018.
 //  Copyright (c) 2018 daihase. All rights reserved.
@@ -36,35 +36,37 @@ public class SketchView: UIView {
     public var lineAlpha = CGFloat(1)
     public var stampImage: UIImage?
     public var drawTool: SketchToolType = .pen
+    private var currentTool: SketchTool?
     public var drawingPenType: PenType = .normal
     public var sketchViewDelegate: SketchViewDelegate?
-    private var currentTool: SketchTool?
-    private let pathArray: NSMutableArray = NSMutableArray()
-    private let bufferArray: NSMutableArray = NSMutableArray()
+    private var pathArray = [SketchTool]()
+    private var pathArrayBackup = [SketchTool]()
+    private var bufferArray = [SketchTool]()
+    private var bufferArrayBackup = [SketchTool]()
     private var currentPoint: CGPoint?
     private var previousPoint1: CGPoint?
     private var previousPoint2: CGPoint?
     private var image: UIImage?
     private var backgroundImage: UIImage?
     private var drawMode: ImageRenderingMode = .original
-
+    
     public override init(frame: CGRect) {
         super.init(frame: frame)
         prepareForInitial()
     }
-
+    
     public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)!
         prepareForInitial()
     }
-
+    
     private func prepareForInitial() {
         backgroundColor = UIColor.clear
     }
-
+    
     public override func draw(_ rect: CGRect) {
         super.draw(rect)
-
+        
         switch drawMode {
         case .original:
             image?.draw(at: CGPoint.zero)
@@ -73,13 +75,13 @@ public class SketchView: UIView {
             image?.draw(in: self.bounds)
             break
         }
-
+        
         currentTool?.draw()
     }
-
+    
     private func updateCacheImage(_ isUpdate: Bool) {
         UIGraphicsBeginImageContextWithOptions(bounds.size, false, 0.0)
-
+        
         if isUpdate {
             image = nil
             switch drawMode {
@@ -92,21 +94,19 @@ public class SketchView: UIView {
                 (backgroundImage?.copy() as! UIImage).draw(in: self.bounds)
                 break
             }
-
+            
             for obj in pathArray {
-                if let tool = obj as? SketchTool {
-                    tool.draw()
+                obj.draw()
                 }
-            }
         } else {
             image?.draw(at: .zero)
             currentTool?.draw()
         }
-
+        
         image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
     }
-
+    
     private func toolWithCurrentSettings() -> SketchTool? {
         switch drawTool {
         case .pen:
@@ -137,126 +137,211 @@ public class SketchView: UIView {
             return ellipseTool
         }
     }
-
+    
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-
+        
         previousPoint1 = touch.previousLocation(in: self)
         currentPoint = touch.location(in: self)
         currentTool = toolWithCurrentSettings()
         currentTool?.lineWidth = lineWidth
         currentTool?.lineColor = lineColor
         currentTool?.lineAlpha = lineAlpha
-
         switch currentTool! {
         case is PenTool:
             guard let penTool = currentTool as? PenTool else { return }
-            pathArray.add(penTool)
+            pathArray.append(penTool)
             penTool.drawingPenType = drawingPenType
             penTool.setInitialPoint(currentPoint!)
         case is StampTool:
             guard let stampTool = currentTool as? StampTool else { return }
-            pathArray.add(stampTool)
+            pathArray.append(stampTool)
             stampTool.setStampImage(image: stampImage)
             stampTool.setInitialPoint(currentPoint!)
         default:
             guard let currentTool = currentTool else { return }
-            pathArray.add(currentTool)
+            pathArray.append(currentTool)
             currentTool.setInitialPoint(currentPoint!)
         }
     }
-
+    
     public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-
+        
         previousPoint2 = previousPoint1
         previousPoint1 = touch.previousLocation(in: self)
         currentPoint = touch.location(in: self)
-
+        
         if let penTool = currentTool as? PenTool {
             let renderingBox = penTool.createBezierRenderingBox(previousPoint2!, widhPreviousPoint: previousPoint1!, withCurrentPoint: currentPoint!)
-
+            print("previousPoint2: \(previousPoint2!), widhPreviousPoint: \(previousPoint1!), withCurrentPoint: \(currentPoint!)")
             setNeedsDisplay(renderingBox)
+            print("--------------------")
         } else {
             currentTool?.moveFromPoint(previousPoint1!, toPoint: currentPoint!)
             setNeedsDisplay()
         }
     }
-
+    
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         touchesMoved(touches, with: event)
         finishDrawing()
     }
-
+    
     fileprivate func finishDrawing() {
         updateCacheImage(false)
-        bufferArray.removeAllObjects()
+        bufferArray.removeAll()
         sketchViewDelegate?.drawView?(self, didEndDrawUsingTool: currentTool! as AnyObject)
         currentTool = nil
     }
-
+    
     private func resetTool() {
         currentTool = nil
     }
-
+    
     public func clear() {
         resetTool()
-        bufferArray.removeAllObjects()
-        pathArray.removeAllObjects()
+        bufferArray.removeAll()
+        pathArray.removeAll()
         updateCacheImage(true)
-
         setNeedsDisplay()
     }
+    
+    
+    public func redrawView(lineColor: UIColor) {
+        
+        let dsds = pathArray.first as! PenTool
+        
 
+        
+        copyAuxArrays()
+        clear()
+        self.lineColor = lineColor
+        restorePointsBackup(lineColor: lineColor)
+        updateCacheImage(true)
+        setNeedsDisplay()
+    }
+    
+    
+    func copyAuxArrays(){
+        pathArrayBackup = pathArray
+        bufferArrayBackup = bufferArray
+    }
+    
+    func restorePointsBackup(lineColor: UIColor){
+        pathArray = copyPointsArray(lineColor: lineColor, pointsArray: pathArrayBackup)
+        bufferArray = copyPointsArray(lineColor: lineColor, pointsArray: bufferArrayBackup)
+        pathArrayBackup.removeAll()
+        bufferArrayBackup.removeAll()
+    }
+    
+    
+    func copyPointsArray(lineColor: UIColor, pointsArray:[SketchTool]) -> [SketchTool]{
+        var pointsArrayModified = [SketchTool]()
+        for sketchTool in pointsArray{
+            var mutableSketchTool = sketchTool
+            mutableSketchTool.lineColor = lineColor
+            pointsArrayModified.append(mutableSketchTool)
+        }
+        return pointsArrayModified
+    }
+    
     func pinch() {
         resetTool()
-        guard let tool = pathArray.lastObject as? SketchTool else { return }
-        bufferArray.add(tool)
-        pathArray.removeLastObject()
+        guard let tool = pathArray.last else { return }
+        bufferArray.append(tool)
+        pathArray.removeLast()
         updateCacheImage(true)
-
+        
         setNeedsDisplay()
     }
-
+    
     public func loadImage(image: UIImage) {
         self.image = image
         backgroundImage =  image.copy() as? UIImage
-        bufferArray.removeAllObjects()
-        pathArray.removeAllObjects()
+        bufferArray.removeAll()
+        pathArray.removeAll()
         updateCacheImage(true)
-
+        
         setNeedsDisplay()
     }
-
+    
     public func undo() {
         if canUndo() {
-            guard let tool = pathArray.lastObject as? SketchTool else { return }
+            guard let tool = pathArray.last else { return }
             resetTool()
-            bufferArray.add(tool)
-            pathArray.removeLastObject()
+            bufferArray.append(tool)
+            pathArray.removeLast()
             updateCacheImage(true)
-
+            
             setNeedsDisplay()
         }
     }
-
+    
     public func redo() {
         if canRedo() {
-            guard let tool = bufferArray.lastObject as? SketchTool else { return }
+            guard let tool = bufferArray.last else { return }
             resetTool()
-            pathArray.add(tool)
-            bufferArray.removeLastObject()
+            pathArray.append(tool)
+            bufferArray.removeLast()
             updateCacheImage(true)
-
             setNeedsDisplay()
         }
     }
-
+    
     func canUndo() -> Bool {
         return pathArray.count > 0
     }
-
+    
     func canRedo() -> Bool {
         return bufferArray.count > 0
+    }
+    
+    
+    
+    public func testLoadDraw(){
+        
+        
+        currentTool = toolWithCurrentSettings()
+        currentTool?.lineWidth = lineWidth
+        currentTool?.lineColor = lineColor
+        currentTool?.lineAlpha = lineAlpha
+        
+        guard let penTool = currentTool as? PenTool else { return }
+        pathArray.append(penTool)
+        penTool.drawingPenType = drawingPenType
+        
+        if let oneElement = currentTool as? PenTool {
+            let a = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 126.5), widhPreviousPoint: CGPoint(x: 176.5, y: 126.5), withCurrentPoint: CGPoint(x: 176.5, y: 127.0))
+            //setNeedsDisplay(a)
+            let b = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 126.5), widhPreviousPoint: CGPoint(x: 176.5, y: 127.0), withCurrentPoint: CGPoint(x: 176.5, y: 128.5))
+            //setNeedsDisplay(b)
+            let c = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 127.0), widhPreviousPoint: CGPoint(x: 176.5, y: 128.5), withCurrentPoint: CGPoint(x: 176.5, y: 130.0))
+            //setNeedsDisplay(c)
+            let d = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 128.5), widhPreviousPoint: CGPoint(x: 176.5, y: 130.0), withCurrentPoint: CGPoint(x: 176.5, y: 134.0))
+            //setNeedsDisplay(d)
+            let e = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 130.0), widhPreviousPoint: CGPoint(x: 176.5, y: 134.0), withCurrentPoint: CGPoint(x: 176.5, y: 139.0))
+            //setNeedsDisplay(e)
+            let f = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 134.0), widhPreviousPoint: CGPoint(x: 176.5, y: 139.0), withCurrentPoint: CGPoint(x: 176.5, y: 144.0))
+            //setNeedsDisplay(f)
+            let g = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 139.0), widhPreviousPoint: CGPoint(x: 176.5, y: 144.0), withCurrentPoint: CGPoint(x: 176.5, y: 146.5))
+            //setNeedsDisplay(g)
+            let h = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 144.0), widhPreviousPoint: CGPoint(x: 176.5, y: 146.5), withCurrentPoint: CGPoint(x: 176.5, y: 150.0))
+            //setNeedsDisplay(h)
+            let i = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 146.5), widhPreviousPoint: CGPoint(x: 176.5, y: 150.0), withCurrentPoint: CGPoint(x: 176.5, y: 151.0))
+            //setNeedsDisplay(i)
+            let j = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 150.0), widhPreviousPoint: CGPoint(x: 176.5, y: 151.0), withCurrentPoint: CGPoint(x: 176.5, y: 152.0))
+            //setNeedsDisplay(j)
+            
+            let k = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 151.0), widhPreviousPoint: CGPoint(x: 176.5, y: 152.0), withCurrentPoint: CGPoint(x: 176.5, y: 153.0))
+            //setNeedsDisplay(k)
+            
+            let ij = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 152.0), widhPreviousPoint: CGPoint(x: 176.5, y: 153.0), withCurrentPoint: CGPoint(x: 176.5, y: 153.5))
+            //setNeedsDisplay(ij)
+            
+        }
+        updateCacheImage(true)
+        setNeedsDisplay()
+
     }
 }

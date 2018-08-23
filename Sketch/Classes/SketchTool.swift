@@ -1,6 +1,6 @@
 //
-//  SketchTool.swift
-//  Sketch
+//  DoodleKitTool.swift
+//  DoodleKit
 //
 //  Created by daihase on 04/06/2018.
 //  Copyright (c) 2018 daihase. All rights reserved.
@@ -24,11 +24,24 @@ public enum PenType {
     case neon
 }
 
+class Coordinates{
+    var previousPoint1: CGPoint
+    var previousPoint2: CGPoint
+    var currenPoint: CGPoint
+    
+    init(previousPoint1: CGPoint, previousPoint2: CGPoint, currenPoint: CGPoint) {
+        self.previousPoint1 = previousPoint1
+        self.previousPoint2 = previousPoint2
+        self.currenPoint = currenPoint
+    }
+}
+
 class PenTool: UIBezierPath, SketchTool {
     var path: CGMutablePath
     var lineColor: UIColor
     var lineAlpha: CGFloat
     var drawingPenType: PenType
+    var coordinates = [Coordinates]()
 
     override init() {
         path = CGMutablePath.init()
@@ -37,7 +50,18 @@ class PenTool: UIBezierPath, SketchTool {
         drawingPenType = .normal
         super.init()
         lineCapStyle = CGLineCap.round
+    
     }
+    
+    init(path:CGMutablePath, lineColor: UIColor) {
+        self.path = path
+        self.lineColor = lineColor
+        lineAlpha = 0
+        drawingPenType = .normal
+        super.init()
+        lineCapStyle = CGLineCap.round
+    }
+    
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -51,9 +75,10 @@ class PenTool: UIBezierPath, SketchTool {
         let mid1 = middlePoint(previousPoint1, previousPoint2: previousPoint2)
         let mid2 = middlePoint(cpoint, previousPoint2: previousPoint1)
         let subpath = CGMutablePath.init()
-
+        
         subpath.move(to: CGPoint(x: mid1.x, y: mid1.y))
         subpath.addQuadCurve(to: CGPoint(x: mid2.x, y: mid2.y), control: CGPoint(x: previousPoint1.x, y: previousPoint1.y))
+        coordinates.append(Coordinates(previousPoint1: previousPoint1, previousPoint2: previousPoint2, currenPoint: currentPoint))
         path.addPath(subpath)
         
         var boundingBox: CGRect = subpath.boundingBox
