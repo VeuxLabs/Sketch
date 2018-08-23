@@ -167,16 +167,12 @@ public class SketchView: UIView {
     
     public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        
         previousPoint2 = previousPoint1
         previousPoint1 = touch.previousLocation(in: self)
         currentPoint = touch.location(in: self)
-        
         if let penTool = currentTool as? PenTool {
-            let renderingBox = penTool.createBezierRenderingBox(previousPoint2!, widhPreviousPoint: previousPoint1!, withCurrentPoint: currentPoint!)
-            print("previousPoint2: \(previousPoint2!), widhPreviousPoint: \(previousPoint1!), withCurrentPoint: \(currentPoint!)")
+            let renderingBox = penTool.createBezierRenderingBox(previousPoint2!, widhPreviousPoint: previousPoint1!, withCurrentPoint: currentPoint!, view: self)
             setNeedsDisplay(renderingBox)
-            print("--------------------")
         } else {
             currentTool?.moveFromPoint(previousPoint1!, toPoint: currentPoint!)
             setNeedsDisplay()
@@ -209,11 +205,6 @@ public class SketchView: UIView {
     
     
     public func redrawView(lineColor: UIColor) {
-        
-        let dsds = pathArray.first as! PenTool
-        
-
-        
         copyAuxArrays()
         clear()
         self.lineColor = lineColor
@@ -239,8 +230,14 @@ public class SketchView: UIView {
     func copyPointsArray(lineColor: UIColor, pointsArray:[SketchTool]) -> [SketchTool]{
         var pointsArrayModified = [SketchTool]()
         for sketchTool in pointsArray{
-            var mutableSketchTool = sketchTool
+            let mutableSketchTool = sketchTool as! PenTool
             mutableSketchTool.lineColor = lineColor
+            let coordinates = mutableSketchTool.coordinates
+            mutableSketchTool.path = CGMutablePath.init()
+            mutableSketchTool.coordinates = [Coordinates]()
+            for coordinateObject in coordinates{
+                let _ = mutableSketchTool.createBezierRenderingBox(CGPoint(x: coordinateObject.previousPoint2.x * self.bounds.width, y: coordinateObject.previousPoint2.y * self.bounds.height), widhPreviousPoint: CGPoint(x: coordinateObject.previousPoint1.x * self.bounds.width, y: coordinateObject.previousPoint1.y * self.bounds.height), withCurrentPoint: CGPoint(x: coordinateObject.currenPoint.x * self.bounds.width, y: coordinateObject.currenPoint.y * self.bounds.height), view: self)
+            }
             pointsArrayModified.append(mutableSketchTool)
         }
         return pointsArrayModified
@@ -311,6 +308,7 @@ public class SketchView: UIView {
         pathArray.append(penTool)
         penTool.drawingPenType = drawingPenType
         
+        /*
         if let oneElement = currentTool as? PenTool {
             let a = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 126.5), widhPreviousPoint: CGPoint(x: 176.5, y: 126.5), withCurrentPoint: CGPoint(x: 176.5, y: 127.0))
             //setNeedsDisplay(a)
@@ -340,6 +338,8 @@ public class SketchView: UIView {
             //setNeedsDisplay(ij)
             
         }
+        */
+        
         updateCacheImage(true)
         setNeedsDisplay()
 

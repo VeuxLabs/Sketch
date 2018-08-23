@@ -71,22 +71,22 @@ class PenTool: UIBezierPath, SketchTool {
 
     func moveFromPoint(_ startPoint: CGPoint, toPoint endPoint: CGPoint) {}
 
-    func createBezierRenderingBox(_ previousPoint2: CGPoint, widhPreviousPoint previousPoint1: CGPoint, withCurrentPoint cpoint: CGPoint) -> CGRect {
+    func createBezierRenderingBox(_ previousPoint2: CGPoint, widhPreviousPoint previousPoint1: CGPoint, withCurrentPoint cpoint: CGPoint, view: UIView) -> CGRect {
         let mid1 = middlePoint(previousPoint1, previousPoint2: previousPoint2)
         let mid2 = middlePoint(cpoint, previousPoint2: previousPoint1)
         let subpath = CGMutablePath.init()
-        
         subpath.move(to: CGPoint(x: mid1.x, y: mid1.y))
         subpath.addQuadCurve(to: CGPoint(x: mid2.x, y: mid2.y), control: CGPoint(x: previousPoint1.x, y: previousPoint1.y))
-        coordinates.append(Coordinates(previousPoint1: previousPoint1, previousPoint2: previousPoint2, currenPoint: currentPoint))
+        let previousPoint1Percentage = CGPoint(x: Double(previousPoint1.x / view.bounds.width) , y: Double(previousPoint1.y / view.bounds.height))
+        let previousPoint2Percentage = CGPoint(x: Double(previousPoint2.x / view.bounds.width) , y: Double(previousPoint2.y / view.bounds.height))
+        let currentPointPercentage = CGPoint(x: Double(cpoint.x / view.bounds.width) , y: Double(cpoint.y / view.bounds.height))
+        coordinates.append(Coordinates(previousPoint1: previousPoint1Percentage, previousPoint2: previousPoint2Percentage, currenPoint: currentPointPercentage))
         path.addPath(subpath)
-        
         var boundingBox: CGRect = subpath.boundingBox
         boundingBox.origin.x -= lineWidth * 2.0
         boundingBox.origin.y -= lineWidth * 2.0
         boundingBox.size.width += lineWidth * 4.0
         boundingBox.size.height += lineWidth * 4.0
-
         return boundingBox
     }
 
