@@ -36,6 +36,16 @@ public class SketchView: UIView {
     public var lineAlpha = CGFloat(1)
     public var stampImage: UIImage?
     public var drawTool: SketchToolType = .pen
+    
+    public let previousPoint1XKey = "previousPoint1XKey"
+    public let previousPoint1YKey = "previousPoint1YKey"
+    public let previousPoint2XKey = "previousPoint2XKey"
+    public let previousPoint2YKey = "previousPoint2YKey"
+    public let currenPointXKey = "currenPointXKey"
+    public let currenPointYKey = "currenPointYKey"
+
+ 
+    
     private var currentTool: SketchTool?
     public var drawingPenType: PenType = .normal
     public var sketchViewDelegate: SketchViewDelegate?
@@ -286,62 +296,54 @@ public class SketchView: UIView {
         }
     }
     
-    func canUndo() -> Bool {
+    public func canUndo() -> Bool {
         return pathArray.count > 0
     }
     
-    func canRedo() -> Bool {
+    public func canRedo() -> Bool {
         return bufferArray.count > 0
     }
     
     
-    
-    public func testLoadDraw(){
-        
-        
-        currentTool = toolWithCurrentSettings()
-        currentTool?.lineWidth = lineWidth
-        currentTool?.lineColor = lineColor
-        currentTool?.lineAlpha = lineAlpha
-        
-        guard let penTool = currentTool as? PenTool else { return }
-        pathArray.append(penTool)
-        penTool.drawingPenType = drawingPenType
-        
-        /*
-        if let oneElement = currentTool as? PenTool {
-            let a = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 126.5), widhPreviousPoint: CGPoint(x: 176.5, y: 126.5), withCurrentPoint: CGPoint(x: 176.5, y: 127.0))
-            //setNeedsDisplay(a)
-            let b = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 126.5), widhPreviousPoint: CGPoint(x: 176.5, y: 127.0), withCurrentPoint: CGPoint(x: 176.5, y: 128.5))
-            //setNeedsDisplay(b)
-            let c = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 127.0), widhPreviousPoint: CGPoint(x: 176.5, y: 128.5), withCurrentPoint: CGPoint(x: 176.5, y: 130.0))
-            //setNeedsDisplay(c)
-            let d = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 128.5), widhPreviousPoint: CGPoint(x: 176.5, y: 130.0), withCurrentPoint: CGPoint(x: 176.5, y: 134.0))
-            //setNeedsDisplay(d)
-            let e = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 130.0), widhPreviousPoint: CGPoint(x: 176.5, y: 134.0), withCurrentPoint: CGPoint(x: 176.5, y: 139.0))
-            //setNeedsDisplay(e)
-            let f = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 134.0), widhPreviousPoint: CGPoint(x: 176.5, y: 139.0), withCurrentPoint: CGPoint(x: 176.5, y: 144.0))
-            //setNeedsDisplay(f)
-            let g = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 139.0), widhPreviousPoint: CGPoint(x: 176.5, y: 144.0), withCurrentPoint: CGPoint(x: 176.5, y: 146.5))
-            //setNeedsDisplay(g)
-            let h = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 144.0), widhPreviousPoint: CGPoint(x: 176.5, y: 146.5), withCurrentPoint: CGPoint(x: 176.5, y: 150.0))
-            //setNeedsDisplay(h)
-            let i = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 146.5), widhPreviousPoint: CGPoint(x: 176.5, y: 150.0), withCurrentPoint: CGPoint(x: 176.5, y: 151.0))
-            //setNeedsDisplay(i)
-            let j = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 150.0), widhPreviousPoint: CGPoint(x: 176.5, y: 151.0), withCurrentPoint: CGPoint(x: 176.5, y: 152.0))
-            //setNeedsDisplay(j)
-            
-            let k = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 151.0), widhPreviousPoint: CGPoint(x: 176.5, y: 152.0), withCurrentPoint: CGPoint(x: 176.5, y: 153.0))
-            //setNeedsDisplay(k)
-            
-            let ij = oneElement.createBezierRenderingBox(CGPoint(x: 176.5, y: 152.0), widhPreviousPoint: CGPoint(x: 176.5, y: 153.0), withCurrentPoint: CGPoint(x: 176.5, y: 153.5))
-            //setNeedsDisplay(ij)
-            
+    public func mapCurrentSketchToPlainObject() -> [[[String: Double]]]{
+        var pathArrayDictionary = [[[String:Double]]]()
+        for object in pathArray{
+            if let penTool = object as? PenTool{
+                var coordinatesArray = [[String:Double]]()
+                for coordinates in penTool.coordinates{
+                    let coordinatesDictionary = [previousPoint1XKey: Double(coordinates.previousPoint1.x),
+                                                 previousPoint1YKey: Double(coordinates.previousPoint1.y),
+                                                 previousPoint2XKey: Double(coordinates.previousPoint2.x),
+                                                 previousPoint2YKey: Double(coordinates.previousPoint2.y),
+                                                 currenPointXKey: Double(coordinates.currenPoint.x),
+                                                 currenPointYKey: Double(coordinates.currenPoint.y)]
+                    coordinatesArray.append(coordinatesDictionary)
+                }
+                pathArrayDictionary.append(coordinatesArray)
+            }
         }
-        */
-        
-        updateCacheImage(true)
-        setNeedsDisplay()
-
+        return pathArrayDictionary
+    }
+    
+    
+    public func loadDraw(path: [[[String: Double]]]){
+        for penTool in path{
+            currentTool = toolWithCurrentSettings()
+            currentTool?.lineWidth = lineWidth
+            currentTool?.lineColor = lineColor
+            currentTool?.lineAlpha = lineAlpha
+            guard let object = currentTool as? PenTool else { return }
+            pathArray.append(object)
+            for coordinates in penTool{
+                let previousPoint1 = CGPoint(x: coordinates[previousPoint1XKey]!, y: coordinates[previousPoint1YKey]!)
+                let previousPoint2 = CGPoint(x: coordinates[previousPoint2XKey]!, y: coordinates[previousPoint2YKey]!)
+                let currenPoint = CGPoint(x: coordinates[currenPointXKey]!, y: coordinates[currenPointYKey]!)
+                let _ = object.createBezierRenderingBox(previousPoint2, widhPreviousPoint: previousPoint1, withCurrentPoint: currenPoint, view: self)
+            }
+        }
+        if path.count > 0{
+            updateCacheImage(true)
+            setNeedsDisplay()
+        }
     }
 }
