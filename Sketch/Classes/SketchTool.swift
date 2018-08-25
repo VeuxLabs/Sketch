@@ -77,9 +77,9 @@ class PenTool: UIBezierPath, SketchTool {
         let subpath = CGMutablePath.init()
         subpath.move(to: CGPoint(x: mid1.x, y: mid1.y))
         subpath.addQuadCurve(to: CGPoint(x: mid2.x, y: mid2.y), control: CGPoint(x: previousPoint1.x, y: previousPoint1.y))
-        let previousPoint1Percentage = CGPoint(x: Double(previousPoint1.x / view.bounds.width) , y: Double(previousPoint1.y / view.bounds.height))
-        let previousPoint2Percentage = CGPoint(x: Double(previousPoint2.x / view.bounds.width) , y: Double(previousPoint2.y / view.bounds.height))
-        let currentPointPercentage = CGPoint(x: Double(cpoint.x / view.bounds.width) , y: Double(cpoint.y / view.bounds.height))
+        let previousPoint1Percentage = CGPoint(x: previousPoint1.x / view.bounds.width , y: previousPoint1.y / view.bounds.height)
+        let previousPoint2Percentage = CGPoint(x: previousPoint2.x / view.bounds.width , y: previousPoint2.y / view.bounds.height)
+        let currentPointPercentage = CGPoint(x: cpoint.x / view.bounds.width , y: cpoint.y / view.bounds.height)
         coordinates.append(Coordinates(previousPoint1: previousPoint1Percentage, previousPoint2: previousPoint2Percentage, currenPoint: currentPointPercentage))
         path.addPath(subpath)
         var boundingBox: CGRect = subpath.boundingBox
