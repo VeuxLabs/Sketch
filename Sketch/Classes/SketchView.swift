@@ -31,21 +31,19 @@ public enum ImageRenderingMode {
     @objc optional func drawView(_ view: SketchView, didEndDrawUsingTool tool: AnyObject)
 }
 
+public struct SketchConstants{
+    public static let previousPoint1Key = "previousPointKey"
+    public static let previousPoint2Key = "previousPoint2Key"
+    public static let currentPointKey = "currentPointKey"
+}
+
 public class SketchView: UIView {
     public var lineColor = UIColor.black
     public var lineWidth = CGFloat(10)
     public var lineAlpha = CGFloat(1)
     public var stampImage: UIImage?
     public var drawTool: SketchToolType = .pen
-    
-    public let previousPoint1XKey = "previousPoint1XKey"
-    public let previousPoint1YKey = "previousPoint1YKey"
-    public let previousPoint2XKey = "previousPoint2XKey"
-    public let previousPoint2YKey = "previousPoint2YKey"
-    public let currenPointXKey = "currenPointXKey"
-    public let currenPointYKey = "currenPointYKey"
-    
-    
+
     
     private var currentTool: SketchTool?
     public var drawingPenType: PenType = .normal
@@ -336,18 +334,15 @@ public class SketchView: UIView {
     }
     
     
-    public func mapCurrentSketchToPlainObject() -> [[[String: Double]]]{
-        var pathArrayDictionary = [[[String:Double]]]()
+    public func mapCurrentSketchToPlainObject() -> [[[String: CGPoint]]]{
+        var pathArrayDictionary = [[[String:CGPoint]]]()
         for object in pathArray{
             if let penTool = object as? PenTool{
-                var coordinatesArray = [[String:Double]]()
+                var coordinatesArray = [[String:CGPoint]]()
                 for coordinates in penTool.coordinates{
-                    let coordinatesDictionary = [previousPoint1XKey: Double(coordinates.previousPoint1.x),
-                                                 previousPoint1YKey: Double(coordinates.previousPoint1.y),
-                                                 previousPoint2XKey: Double(coordinates.previousPoint2.x),
-                                                 previousPoint2YKey: Double(coordinates.previousPoint2.y),
-                                                 currenPointXKey: Double(coordinates.currenPoint.x),
-                                                 currenPointYKey: Double(coordinates.currenPoint.y)]
+                    let coordinatesDictionary = [SketchConstants.previousPoint1Key: coordinates.previousPoint1,
+                                                 SketchConstants.previousPoint2Key: coordinates.previousPoint2,
+                                                 SketchConstants.currentPointKey: coordinates.currenPoint]
                     coordinatesArray.append(coordinatesDictionary)
                 }
                 pathArrayDictionary.append(coordinatesArray)
@@ -357,7 +352,7 @@ public class SketchView: UIView {
     }
     
     
-    public func loadDraw(path: [[[String: Double]]]){
+    public func loadDraw(path: [[[String: CGPoint]]]){
         for penTool in path{
             currentTool = toolWithCurrentSettings()
             currentTool?.lineWidth = lineWidth
@@ -366,10 +361,7 @@ public class SketchView: UIView {
             guard let object = currentTool as? PenTool else { return }
             pathArray.append(object)
             for coordinates in penTool{
-                let previousPoint1 = CGPoint(x: coordinates[previousPoint1XKey]!, y: coordinates[previousPoint1YKey]!)
-                let previousPoint2 = CGPoint(x: coordinates[previousPoint2XKey]!, y: coordinates[previousPoint2YKey]!)
-                let currenPoint = CGPoint(x: coordinates[currenPointXKey]!, y: coordinates[currenPointYKey]!)
-                let _ = object.createBezierRenderingBox(previousPoint2, widhPreviousPoint: previousPoint1, withCurrentPoint: currenPoint, view: self)
+                let _ = object.createBezierRenderingBox(CGPoint(x: coordinates[SketchConstants.previousPoint2Key]!.x * self.bounds.width, y: coordinates[SketchConstants.previousPoint2Key]!.y * self.bounds.height), widhPreviousPoint: CGPoint(x: coordinates[SketchConstants.previousPoint1Key]!.x * self.bounds.width, y: coordinates[SketchConstants.previousPoint1Key]!.y * self.bounds.height), withCurrentPoint: CGPoint(x: coordinates[SketchConstants.currentPointKey]!.x * self.bounds.width, y: coordinates[SketchConstants.currentPointKey]!.y * self.bounds.height), view: self)
             }
         }
         if path.count > 0{

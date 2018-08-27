@@ -85,22 +85,6 @@ class PenTool: UIBezierPath, SketchTool {
     
     func moveFromPoint(_ startPoint: CGPoint, toPoint endPoint: CGPoint) {}
     
-    /*
-     func createBezierRenderingBox(_ previousPoint2: CGPoint, widhPreviousPoint previousPoint1: CGPoint, withCurrentPoint cpoint: CGPoint, view: UIView) -> CGRect {
-     let subpath = createSubPath(previousPoint2: previousPoint2, previousPoint1: previousPoint1, currentPoint: currentPoint)
-     let previousPoint1Percentage = CGPoint(x: Double(previousPoint1.x / view.bounds.width) , y: Double(previousPoint1.y / view.bounds.height))
-     let previousPoint2Percentage = CGPoint(x: Double(previousPoint2.x / view.bounds.width) , y: Double(previousPoint2.y / view.bounds.height))
-     let currentPointPercentage = CGPoint(x: Double(cpoint.x / view.bounds.width) , y: Double(cpoint.y / view.bounds.height))
-     coordinates.append(Coordinates(previousPoint1: previousPoint1Percentage, previousPoint2: previousPoint2Percentage, currenPoint: currentPointPercentage))
-     path.addPath(subpath)
-     var boundingBox: CGRect = subpath.boundingBox
-     boundingBox.origin.x -= lineWidth * 2.0
-     boundingBox.origin.y -= lineWidth * 2.0
-     boundingBox.size.width += lineWidth * 4.0
-     boundingBox.size.height += lineWidth * 4.0
-     return boundingBox
-     }*/
-    
     
     func createBezierRenderingBox(_ previousPoint2: CGPoint, widhPreviousPoint previousPoint1: CGPoint, withCurrentPoint cpoint: CGPoint, view: UIView) -> CGRect {
         let subpath = createSubPath(previousPoint2: previousPoint2, previousPoint1: previousPoint1, currentPoint: cpoint)
