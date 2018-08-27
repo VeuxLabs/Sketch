@@ -8,6 +8,7 @@
 
 import UIKit
 
+
 public enum SketchToolType {
     case pen
     case eraser
@@ -30,19 +31,21 @@ public enum ImageRenderingMode {
     @objc optional func drawView(_ view: SketchView, didEndDrawUsingTool tool: AnyObject)
 }
 
-public struct SketchConstants{
-    public static let previousPoint1Key = "previousPointKey"
-    public static let previousPoint2Key = "previousPoint2Key"
-    public static let currentPointKey = "currentPointKey"
-}
-
 public class SketchView: UIView {
     public var lineColor = UIColor.black
     public var lineWidth = CGFloat(10)
     public var lineAlpha = CGFloat(1)
     public var stampImage: UIImage?
     public var drawTool: SketchToolType = .pen
- 
+    
+    public let previousPoint1XKey = "previousPoint1XKey"
+    public let previousPoint1YKey = "previousPoint1YKey"
+    public let previousPoint2XKey = "previousPoint2XKey"
+    public let previousPoint2YKey = "previousPoint2YKey"
+    public let currenPointXKey = "currenPointXKey"
+    public let currenPointYKey = "currenPointYKey"
+    
+    
     
     private var currentTool: SketchTool?
     public var drawingPenType: PenType = .normal
@@ -74,7 +77,6 @@ public class SketchView: UIView {
     
     public override func draw(_ rect: CGRect) {
         super.draw(rect)
-        
         switch drawMode {
         case .original:
             image?.draw(at: CGPoint.zero)
@@ -83,13 +85,11 @@ public class SketchView: UIView {
             image?.draw(in: self.bounds)
             break
         }
-        
         currentTool?.draw()
     }
     
     private func updateCacheImage(_ isUpdate: Bool) {
         UIGraphicsBeginImageContextWithOptions(bounds.size, false, 0.0)
-        
         if isUpdate {
             image = nil
             switch drawMode {
@@ -105,7 +105,7 @@ public class SketchView: UIView {
             
             for obj in pathArray {
                 obj.draw()
-                }
+            }
         } else {
             image?.draw(at: .zero)
             currentTool?.draw()
@@ -158,7 +158,9 @@ public class SketchView: UIView {
         switch currentTool! {
         case is PenTool:
             guard let penTool = currentTool as? PenTool else { return }
-            pathArray.append(penTool)
+            if drawTool != .eraser{
+                pathArray.append(penTool)
+            }
             penTool.drawingPenType = drawingPenType
             penTool.setInitialPoint(currentPoint!)
         case is StampTool:
@@ -179,13 +181,35 @@ public class SketchView: UIView {
         previousPoint1 = touch.previousLocation(in: self)
         currentPoint = touch.location(in: self)
         if let penTool = currentTool as? PenTool {
-            let renderingBox = penTool.createBezierRenderingBox(previousPoint2!, widhPreviousPoint: previousPoint1!, withCurrentPoint: currentPoint!, view: self)
-            setNeedsDisplay(renderingBox)
+            if pathArray.count > 0 && drawTool == .eraser{
+                penTool.path.addPath(penTool.createSubPath(previousPoint2: previousPoint2!, previousPoint1: previousPoint1!, currentPoint: currentPoint!))
+                currentTool = penTool
+                for (index,object) in pathArray.enumerated(){
+                    if let objectParsed = object as? PenTool{
+                        let intersectionFound = objectParsed.path.boundingBox.intersects(penTool.path.boundingBox)
+                        if intersectionFound{
+                            let backupObject = getToolObjectCopy(toolObject: pathArray[index] as! PenTool)
+                            backupObject.index = index
+                            backupObject.backupPath = backupObject.path
+                            backupObject.path = CGMutablePath()
+                            pathArray[index] = backupObject
+                            pathArray.append(backupObject)
+                            updateCacheImage(true)
+                            setNeedsDisplay()
+                        }
+                    }
+                }
+            }
+            else{
+                let renderingBox = penTool.createBezierRenderingBox(previousPoint2!, widhPreviousPoint: previousPoint1!, withCurrentPoint: currentPoint!, view: self)
+                setNeedsDisplay(renderingBox)
+            }
         } else {
             currentTool?.moveFromPoint(previousPoint1!, toPoint: currentPoint!)
             setNeedsDisplay()
         }
     }
+    
     
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         touchesMoved(touches, with: event)
@@ -195,9 +219,7 @@ public class SketchView: UIView {
     fileprivate func finishDrawing() {
         updateCacheImage(false)
         bufferArray.removeAll()
-        if currentTool != nil{
-         sketchViewDelegate?.drawView?(self, didEndDrawUsingTool: currentTool! as AnyObject)
-        }
+        sketchViewDelegate?.drawView?(self, didEndDrawUsingTool: currentTool! as AnyObject)
         currentTool = nil
     }
     
@@ -275,19 +297,28 @@ public class SketchView: UIView {
     
     public func undo() {
         if canUndo() {
-            guard let tool = pathArray.last else { return }
+            guard let tool = pathArray.last as? PenTool else { return }
+            if tool.index != nil {
+                let backupTool = getToolObjectCopy(toolObject: pathArray[tool.index!] as! PenTool)
+                backupTool.path = tool.backupPath!
+                backupTool.index = nil
+                backupTool.backupPath = nil
+                pathArray[tool.index!] = backupTool
+            }
             resetTool()
             bufferArray.append(tool)
             pathArray.removeLast()
             updateCacheImage(true)
-            
             setNeedsDisplay()
         }
     }
     
     public func redo() {
         if canRedo() {
-            guard let tool = bufferArray.last else { return }
+            guard let tool = bufferArray.last as? PenTool else { return }
+            if tool.index != nil{
+                pathArray[tool.index!] = tool
+            }
             resetTool()
             pathArray.append(tool)
             bufferArray.removeLast()
@@ -305,15 +336,18 @@ public class SketchView: UIView {
     }
     
     
-    public func mapCurrentSketchToPlainObject() -> [[[String: CGPoint]]]{
-        var pathArrayDictionary = [[[String:CGPoint]]]()
+    public func mapCurrentSketchToPlainObject() -> [[[String: Double]]]{
+        var pathArrayDictionary = [[[String:Double]]]()
         for object in pathArray{
             if let penTool = object as? PenTool{
-                var coordinatesArray = [[String:CGPoint]]()
+                var coordinatesArray = [[String:Double]]()
                 for coordinates in penTool.coordinates{
-                    let coordinatesDictionary = [SketchConstants.previousPoint1Key: coordinates.previousPoint1,
-                                                 SketchConstants.previousPoint2Key: coordinates.previousPoint2,
-                                                 SketchConstants.currentPointKey: coordinates.currenPoint]
+                    let coordinatesDictionary = [previousPoint1XKey: Double(coordinates.previousPoint1.x),
+                                                 previousPoint1YKey: Double(coordinates.previousPoint1.y),
+                                                 previousPoint2XKey: Double(coordinates.previousPoint2.x),
+                                                 previousPoint2YKey: Double(coordinates.previousPoint2.y),
+                                                 currenPointXKey: Double(coordinates.currenPoint.x),
+                                                 currenPointYKey: Double(coordinates.currenPoint.y)]
                     coordinatesArray.append(coordinatesDictionary)
                 }
                 pathArrayDictionary.append(coordinatesArray)
@@ -323,7 +357,7 @@ public class SketchView: UIView {
     }
     
     
-    public func loadDraw(path: [[[String: CGPoint]]]){
+    public func loadDraw(path: [[[String: Double]]]){
         for penTool in path{
             currentTool = toolWithCurrentSettings()
             currentTool?.lineWidth = lineWidth
@@ -332,7 +366,10 @@ public class SketchView: UIView {
             guard let object = currentTool as? PenTool else { return }
             pathArray.append(object)
             for coordinates in penTool{
-                let _ = object.createBezierRenderingBox(CGPoint(x: coordinates[SketchConstants.previousPoint2Key]!.x * self.bounds.width, y: coordinates[SketchConstants.previousPoint2Key]!.y * self.bounds.height), widhPreviousPoint: CGPoint(x: coordinates[SketchConstants.previousPoint1Key]!.x * self.bounds.width, y: coordinates[SketchConstants.previousPoint1Key]!.y * self.bounds.height), withCurrentPoint: CGPoint(x: coordinates[SketchConstants.currentPointKey]!.x * self.bounds.width, y: coordinates[SketchConstants.currentPointKey]!.y * self.bounds.height), view: self)
+                let previousPoint1 = CGPoint(x: coordinates[previousPoint1XKey]!, y: coordinates[previousPoint1YKey]!)
+                let previousPoint2 = CGPoint(x: coordinates[previousPoint2XKey]!, y: coordinates[previousPoint2YKey]!)
+                let currenPoint = CGPoint(x: coordinates[currenPointXKey]!, y: coordinates[currenPointYKey]!)
+                let _ = object.createBezierRenderingBox(previousPoint2, widhPreviousPoint: previousPoint1, withCurrentPoint: currenPoint, view: self)
             }
         }
         if path.count > 0{
@@ -340,4 +377,15 @@ public class SketchView: UIView {
             setNeedsDisplay()
         }
     }
+    
+    
+    
+    private func getToolObjectCopy(toolObject: PenTool) -> PenTool{
+        let backupTool = PenTool.init(path: toolObject.path, lineColor: toolObject.lineColor, lineAlpha: toolObject.lineAlpha, drawingPenType: toolObject.drawingPenType, coordinates: toolObject.coordinates, backupPath: toolObject.backupPath, index: toolObject.index)
+        backupTool.lineWidth = toolObject.lineWidth
+        backupTool.lineColor = toolObject.lineColor
+        backupTool.lineAlpha = toolObject.lineAlpha
+        return backupTool
+    }
 }
+
