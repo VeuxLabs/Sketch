@@ -148,7 +148,6 @@ public class SketchView: UIView {
     
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        hasChanges = true
         previousPoint1 = touch.previousLocation(in: self)
         currentPoint = touch.location(in: self)
         currentTool = toolWithCurrentSettings()
@@ -159,6 +158,7 @@ public class SketchView: UIView {
         case is PenTool:
             guard let penTool = currentTool as? PenTool else { return }
             if drawTool != .eraser{
+                hasChanges = true
                 pathArray.append(penTool)
             }
             penTool.drawingPenType = drawingPenType
@@ -188,6 +188,7 @@ public class SketchView: UIView {
                     if let objectParsed = object as? PenTool{
                         let intersectionFound = objectParsed.path.boundingBox.intersects(penTool.path.boundingBox)
                         if intersectionFound{
+                             hasChanges = true
                             let backupObject = getToolObjectCopy(toolObject: pathArray[index] as! PenTool)
                             backupObject.index = index
                             backupObject.backupPath = backupObject.path
