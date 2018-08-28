@@ -268,6 +268,10 @@ public class SketchView: UIView {
             for coordinateObject in coordinates{
                 let _ = mutableSketchTool.createBezierRenderingBox(CGPoint(x: coordinateObject.previousPoint2.x * self.bounds.width, y: coordinateObject.previousPoint2.y * self.bounds.height), widhPreviousPoint: CGPoint(x: coordinateObject.previousPoint1.x * self.bounds.width, y: coordinateObject.previousPoint1.y * self.bounds.height), withCurrentPoint: CGPoint(x: coordinateObject.currenPoint.x * self.bounds.width, y: coordinateObject.currenPoint.y * self.bounds.height), view: self)
             }
+            if mutableSketchTool.index != nil {
+                mutableSketchTool.backupPath = mutableSketchTool.path
+                mutableSketchTool.path = CGMutablePath.init()
+            }
             pointsArrayModified.append(mutableSketchTool)
         }
         return pointsArrayModified
