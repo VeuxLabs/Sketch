@@ -337,6 +337,11 @@ public class SketchView: UIView {
         return bufferArray.count > 0
     }
     
+    public func canSave() ->Bool{
+        let filter = pathArray.filter{($0 as! PenTool).index != nil}
+        return filter.count == 0 ? false : true
+    }
+    
     
     public func mapCurrentSketchToPlainObject() -> [[[String: CGPoint]]]{
         var pathArrayDictionary = [[[String:CGPoint]]]()
