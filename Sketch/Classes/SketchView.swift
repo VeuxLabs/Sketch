@@ -43,7 +43,7 @@ public class SketchView: UIView {
     public var lineAlpha = CGFloat(1)
     public var stampImage: UIImage?
     public var drawTool: SketchToolType = .pen
-
+   
     
     private var currentTool: SketchTool?
     public var drawingPenType: PenType = .normal
@@ -58,6 +58,8 @@ public class SketchView: UIView {
     private var image: UIImage?
     private var backgroundImage: UIImage?
     private var drawMode: ImageRenderingMode = .original
+    private var hasChanges = false
+    
     
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -146,7 +148,7 @@ public class SketchView: UIView {
     
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        
+        hasChanges = true
         previousPoint1 = touch.previousLocation(in: self)
         currentPoint = touch.location(in: self)
         currentTool = toolWithCurrentSettings()
@@ -231,6 +233,7 @@ public class SketchView: UIView {
         pathArray.removeAll()
         updateCacheImage(true)
         setNeedsDisplay()
+        hasChanges = false
     }
     
     
@@ -299,6 +302,7 @@ public class SketchView: UIView {
     
     public func undo() {
         if canUndo() {
+            hasChanges = true
             guard let tool = pathArray.last as? PenTool else { return }
             if tool.index != nil {
                 let backupTool = getToolObjectCopy(toolObject: pathArray[tool.index!] as! PenTool)
@@ -317,6 +321,7 @@ public class SketchView: UIView {
     
     public func redo() {
         if canRedo() {
+            hasChanges = true
             guard let tool = bufferArray.last as? PenTool else { return }
             if tool.index != nil{
                 pathArray[tool.index!] = tool
@@ -338,8 +343,11 @@ public class SketchView: UIView {
     }
     
     public func canSave() ->Bool{
-        let filter = pathArray.filter{($0 as! PenTool).index == nil}
-        return filter.count == 0 ? false : true
+        return hasChanges
+    }
+    
+    public func noteWasSavedInTheDB(){
+        hasChanges = false
     }
     
     
@@ -374,6 +382,7 @@ public class SketchView: UIView {
             }
         }
         if path.count > 0{
+            hasChanges = true
             updateCacheImage(true)
             setNeedsDisplay()
         }
