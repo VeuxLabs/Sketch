@@ -341,7 +341,7 @@ public class SketchView: UIView {
     public func mapCurrentSketchToPlainObject() -> [[[String: CGPoint]]]{
         var pathArrayDictionary = [[[String:CGPoint]]]()
         for object in pathArray{
-            if let penTool = object as? PenTool{
+            if let penTool = object as? PenTool, penTool.index == nil{
                 var coordinatesArray = [[String:CGPoint]]()
                 for coordinates in penTool.coordinates{
                     let coordinatesDictionary = [SketchConstants.previousPoint1Key: coordinates.previousPoint1,
