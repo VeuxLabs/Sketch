@@ -197,6 +197,10 @@ public class SketchView: UIView {
                             pathArray.append(backupObject)
                             updateCacheImage(true)
                             setNeedsDisplay()
+                            let filtered = pathArray.filter{($0 as! PenTool).index == nil}
+                            if filtered.count == 0{
+                                hasChanges = false
+                            }
                         }
                     }
                 }
