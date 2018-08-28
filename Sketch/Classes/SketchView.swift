@@ -338,7 +338,7 @@ public class SketchView: UIView {
     }
     
     public func canSave() ->Bool{
-        let filter = pathArray.filter{($0 as! PenTool).index != nil}
+        let filter = pathArray.filter{($0 as! PenTool).index == nil}
         return filter.count == 0 ? false : true
     }
     
