@@ -238,6 +238,9 @@ public class SketchView: UIView {
         pathArray.removeAll()
         updateCacheImage(true)
         setNeedsDisplay()
+    }
+    
+    public func clearSaveFlag(){
         hasChanges = false
     }
     
