@@ -354,6 +354,14 @@ public class SketchView: UIView {
         return hasChanges
     }
     
+    public func canDelete() -> Bool{
+        if pathArray.count == 0{
+            return false
+        }
+        let emptyElements = pathArray.filter{($0 as! PenTool).path.isEmpty}.count
+        return pathArray.count != emptyElements
+    }
+    
     public func noteWasSavedInTheDB(){
         hasChanges = false
     }
@@ -362,7 +370,7 @@ public class SketchView: UIView {
     public func mapCurrentSketchToPlainObject() -> [[[String: CGPoint]]]{
         var pathArrayDictionary = [[[String:CGPoint]]]()
         for object in pathArray{
-            if let penTool = object as? PenTool, penTool.index == nil{
+            if let penTool = object as? PenTool, !penTool.path.isEmpty{
                 var coordinatesArray = [[String:CGPoint]]()
                 for coordinates in penTool.coordinates{
                     let coordinatesDictionary = [SketchConstants.previousPoint1Key: coordinates.previousPoint1,
