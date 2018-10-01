@@ -29,6 +29,7 @@ public enum ImageRenderingMode {
 @objc public protocol SketchViewDelegate: NSObjectProtocol  {
     @objc optional func drawView(_ view: SketchView, willBeginDrawUsingTool tool: AnyObject)
     @objc optional func drawView(_ view: SketchView, didEndDrawUsingTool tool: AnyObject)
+    @objc optional func saveBackupRequired(sketchView: SketchView)
 }
 
 public struct SketchConstants{
@@ -43,6 +44,7 @@ public class SketchView: UIView {
     public var lineAlpha = CGFloat(1)
     public var stampImage: UIImage?
     public var drawTool: SketchToolType = .pen
+    private let maximumPointsAllowedForASingleStroke = 1000
    
     
     private var currentTool: SketchTool?
@@ -59,6 +61,7 @@ public class SketchView: UIView {
     private var backgroundImage: UIImage?
     private var drawMode: ImageRenderingMode = .original
     private var hasChanges = false
+    private var currentStrokesCount: Int = 0
     
     
     public override init(frame: CGRect) {
@@ -88,7 +91,11 @@ public class SketchView: UIView {
         currentTool?.draw()
     }
     
-    private func updateCacheImage(_ isUpdate: Bool) {
+    public func numberOfStrokes()->Int{
+        return pathArray.count
+    }
+    
+    public func updateCacheImage(_ isUpdate: Bool) {
         UIGraphicsBeginImageContextWithOptions(bounds.size, false, 0.0)
         if isUpdate {
             image = nil
@@ -148,6 +155,7 @@ public class SketchView: UIView {
     
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
+        currentStrokesCount = 0
         previousPoint1 = touch.previousLocation(in: self)
         currentPoint = touch.location(in: self)
         currentTool = toolWithCurrentSettings()
@@ -176,6 +184,15 @@ public class SketchView: UIView {
     }
     
     public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        currentStrokesCount += 1
+        if currentStrokesCount == maximumPointsAllowedForASingleStroke {
+            sketchViewDelegate?.saveBackupRequired?(sketchView: self)
+            touchesCancelled(touches, with: event)
+            return
+        }
+        if currentStrokesCount > maximumPointsAllowedForASingleStroke {
+            return
+        }
         guard let touch = touches.first else { return }
         previousPoint2 = previousPoint1
         previousPoint1 = touch.previousLocation(in: self)
