@@ -205,18 +205,32 @@ public class SketchView: UIView {
                     if let objectParsed = object as? PenTool{
                         let intersectionFound = objectParsed.path.boundingBox.intersects(penTool.path.boundingBox)
                         if intersectionFound{
-                             hasChanges = true
-                            let backupObject = getToolObjectCopy(toolObject: pathArray[index] as! PenTool)
-                            backupObject.index = index
-                            backupObject.backupPath = backupObject.path
-                            backupObject.path = CGMutablePath()
-                            pathArray[index] = backupObject
-                            pathArray.append(backupObject)
-                            updateCacheImage(true)
-                            setNeedsDisplay()
-                            let filtered = pathArray.filter{($0 as! PenTool).index == nil}
-                            if filtered.count == 0{
-                                hasChanges = false
+                            
+                            let bm1 = ANPathBitmap.init(path: objectParsed.path)
+                            let bm2 = ANPathBitmap.init(path: penTool.path)
+                            bm1?.lineCap = .round
+                            bm2?.lineCap = .round
+                            bm1?.lineThickness = 2
+                            bm2?.lineThickness = 2
+                            bm1?.generate()
+                            bm2?.generate()
+                            var intPoint : CGPoint = CGPoint()
+                            
+                            let intersection = ANPathIntersection.init(pathBitmap: bm1, anotherPath: bm2)
+                            if intersection?.pathLinesIntersect(&intPoint) ?? false {
+                                hasChanges = true
+                                let backupObject = getToolObjectCopy(toolObject: pathArray[index] as! PenTool)
+                                backupObject.index = index
+                                backupObject.backupPath = backupObject.path
+                                backupObject.path = CGMutablePath()
+                                pathArray[index] = backupObject
+                                pathArray.append(backupObject)
+                                updateCacheImage(true)
+                                setNeedsDisplay()
+                                let filtered = pathArray.filter{($0 as! PenTool).index == nil}
+                                if filtered.count == 0{
+                                    hasChanges = false
+                                }
                             }
                         }
                     }
